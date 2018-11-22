@@ -1,0 +1,108 @@
+---
+title: "Task"
+output: 
+  html_document:
+    code_folding: "show"
+    keep_md: true
+    css: css_for_assignment.css
+    toc: true
+    number_sections: TRUE
+---
+
+# Summary
+
+<style>
+div.blue { background-color : #7FB3D5; color : #ffffff; border-radius: 15px; padding: 15px 10px 10px 10px;}
+</style>
+<div class = "blue">
+
+Summary of the project
+
+</div>
+
+# Data Processing
+
+First of all, I prepared an environment for myself - uploaded all needed libraries (please check if you have all of them installed before proceeding) and created a theme for *ggplot* graphs.
+
+
+```{r message=FALSE}
+
+library(tidyverse)
+library(extrafont)
+library(scales)
+library(lubridate)
+library(xtable)
+library(knitr)
+library(kableExtra)
+library(DT)
+
+violet = '#D98880'
+blue = '#3169ra'
+lightblue = '#7FB3D5'
+pink = '#F2D7D5'
+
+theme <- theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, 
+                                    size = 14, 
+                                    family = "Kodchasan", 
+                                    colour = violet),
+          plot.subtitle = element_text(hjust = 0.5),
+          text = element_text(family = "Montserrat"),
+          legend.position = "bottom",
+          strip.background = element_rect(fill = "white"),
+          strip.text = element_text(colour = blue))
+
+```
+
+Secondly, I uploaded the data directly from the course website, saved it in *data* directory under my working directory and uploaded it to R as *raw_data*. If such directory didn't exist, the code would create it for me. 
+
+```{r message=FALSE, cache=TRUE}
+
+data_folder <- "data"
+
+if (!file.exists(data_folder)){
+    dir.create(data_folder)
+}
+
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",
+              "data/data.csv.bz2")
+
+raw_data <- read_csv("data/data.csv.bz2")
+
+```
+
+Let's check what the data looks like and if we have any unusual values.
+
+```{r}
+
+glimpse(raw_data)
+summary(raw_data)
+
+```
+
+After seeing the structure of the data,  I decided to change the type of `BNG_DATE`, and `BNG_TYPE` as both of them were imported as character vectors and have them as `date` and `time` (plus `date_time` as their combination). Also, I already noticed that the columns for population health (`FATALITIES` and `INJURIES`) are full so no need to worry about empty values. The last thing I did was converted column names with *tolower()* and removed all hyphens.
+
+```{r}
+
+proc_data <- raw_data %>%
+    mutate(date = date(mdy_hms(BGN_DATE)),
+           time = hms::as.hms(paste(substr(BGN_TIME, 1, 2), substr(BGN_TIME, 3, 2), '00', sep = ":")),
+           date_time = date + time) %>%
+    select(-BGN_TIME, -BGN_DATE)
+
+names(proc_data) <- tolower(gsub("_", "", names(proc_data)))
+
+head(proc_data)
+
+```
+
+# Exploratory Data Analysis
+
+
+
+# Results
+
+## Results 2
+
+Some text
+
