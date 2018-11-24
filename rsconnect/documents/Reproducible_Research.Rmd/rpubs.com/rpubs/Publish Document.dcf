@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/442453/a307fe6585d94b0b98b8882f2e51c0cb
+bundleId: https://api.rpubs.com/api/v1/document/442453/a307fe6585d94b0b98b8882f2e51c0cb
+url: http://rpubs.com/MortaV/442453
+when: 1543081326.28466

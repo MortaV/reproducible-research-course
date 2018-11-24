@@ -1,5 +1,5 @@
 ---
-title: "Task"
+title: "Climate events impact on population health and economy, 1950-2011"
 output: 
   html_document:
     code_folding: "show"
@@ -16,7 +16,7 @@ div.blue { background-color : #7FB3D5; color : #ffffff; border-radius: 15px; pad
 </style>
 <div class = "blue">
 
-Summary of the project
+This report describes the impact of climate events on population health and the economy through the years from 1950 to 2011. The main goal of it is to identify which events are the most harmful. After exploratory analysis, I found out that the most dangerous for human health events are hurricane/typhoon, extreme heat, and tsunami and for the economy - hurricane/typhoon, storm surge, and severe thunderstorm.
 
 </div>
 
@@ -35,17 +35,19 @@ library(xtable)
 library(knitr)
 library(kableExtra)
 library(DT)
+library(psych)
 
 violet = '#D98880'
-blue = '#3169ra'
+blue = '#31698a'
 lightblue = '#7FB3D5'
 pink = '#F2D7D5'
 
 theme <- theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5, 
-                                    size = 14, 
+                                    size = 16, 
                                     family = "Kodchasan", 
-                                    colour = violet),
+                                    colour = violet,
+                                    face = "bold"),
           plot.subtitle = element_text(hjust = 0.5),
           text = element_text(family = "Montserrat"),
           legend.position = "bottom",
@@ -80,29 +82,102 @@ summary(raw_data)
 
 ```
 
-After seeing the structure of the data,  I decided to change the type of `BNG_DATE`, and `BNG_TYPE` as both of them were imported as character vectors and have them as `date` and `time` (plus `date_time` as their combination). Also, I already noticed that the columns for population health (`FATALITIES` and `INJURIES`) are full so no need to worry about empty values. The last thing I did was converted column names with *tolower()* and removed all hyphens.
+After seeing the structure of the data,  I decided to change the type of `BNG_DATE`, and `BNG_TYPE` as both of them were imported as character vectors and have them as `date` and `time` (plus `date_time` as their combination). Also, I already noticed that the columns for population health (`FATALITIES` and `INJURIES`) are full so no need to worry about empty values. The last thing I did was converted column names with *tolower()* and removed the only line with without proper event type value.
 
 ```{r}
 
 proc_data <- raw_data %>%
     mutate(date = date(mdy_hms(BGN_DATE)),
            time = hms::as.hms(paste(substr(BGN_TIME, 1, 2), substr(BGN_TIME, 3, 2), '00', sep = ":")),
-           date_time = date + time) %>%
-    select(-BGN_TIME, -BGN_DATE)
+           date_time = date + time,
+           propexp = case_when(PROPDMGEXP == "K" ~ 1000,
+                               PROPDMGEXP == "M" ~ 1000000,
+                               PROPDMGEXP == "B" ~ 1000000000,
+                               TRUE ~ 1),
+           cropexp = case_when(CROPDMGEXP == "K" ~ 1000,
+                               CROPDMGEXP == "M" ~ 1000000,
+                               CROPDMGEXP == "B" ~ 1000000000,
+                               TRUE ~ 1)) %>%
+    select(-BGN_TIME, -BGN_DATE) %>%
+    filter(EVTYPE != "?")
 
-names(proc_data) <- tolower(gsub("_", "", names(proc_data)))
+names(proc_data) <- tolower(names(proc_data))
 
 head(proc_data)
 
 ```
 
-# Exploratory Data Analysis
+# Overall stats
 
+First I check how many events were measured every year. From the graph below, I can see that the amount of events is increasing exponentially and the main growth started in 1994. 
 
+```{r fig.align="center"}
+
+proc_data %>%
+    group_by(year = year(date)) %>%
+    summarize(num = n()) %>%
+    ggplot(aes(x = year,
+               y = num)) +
+    geom_col(fill = blue) +
+    scale_y_continuous(labels = comma_format()) +
+    scale_x_continuous(breaks = seq(1950, 2020, by = 10)) +
+    labs(title = "Yearly amount of events",
+         x = "Date",
+         y = "Events") +
+    theme
+
+```
+
+To understand what kind of plotting possibilities I have, I have checked how many different event types there are:
+
+```{r}
+
+unique_types <- length(unique(proc_data$evtype))
+
+```
+
+`r unique_types` seems like a really big amount of factors to use in the plot so I decided to go with tables instead.
 
 # Results
 
-## Results 2
+## Population Health
 
-Some text
+I checked the impact on population health by averaging amount of injuries and fatalities on each event. In the table below, I provided only the events with at least 10 occurrences in total and arranged by the total impact on population health.
 
+```{r}
+
+data_for_table <- proc_data %>%
+    group_by(`Event Type` = evtype) %>%
+    summarize(`Total Events` = n(),
+              `Average Fatalities` = round(mean(fatalities, na.rm = TRUE), 2),
+              `Average Injuries` = round(mean(injuries, na.rm = TRUE), 2),
+              `Average Total Health` = round(mean(injuries + fatalities, na.rm = TRUE), 2)) %>%
+    arrange(desc(`Average Total Health`)) %>%
+    filter(`Total Events` >= 10)
+
+datatable(data_for_table, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+    
+```
+
+The most dangerous for human health events are hurricane/typhoon, extreme heat, and tsunami.
+
+## Economy
+
+I checked the impact on the economy by averaging the damage by each event. In the table below, I provided only the events with at least 10 occurrences in total and arranged by the total impact on the economy.
+
+```{r}
+
+data_for_table <- proc_data %>%
+    group_by(`Event Type` = evtype) %>%
+    summarize(`Total Events` = n(),
+              `Mean Flood Damage (K USD)` = round(mean(propexp * propdmg, na.rm = TRUE) / 1000, 2),
+              `Mean Crop Damage (K USD)` = round(mean(cropexp * cropdmg, na.rm = TRUE) / 1000, 2),
+              `Mean Damage (K USD)` = round(mean(propexp * propdmg + cropexp * cropdmg, na.rm = TRUE) / 1000, 2)) %>%
+    arrange(desc(`Mean Damage (K USD)`)) %>%
+    filter(`Total Events` >= 10)
+
+datatable(data_for_table, rownames = FALSE, filter="top", options = list(pageLength = 5, scrollX=T))
+
+```
+
+The biggest damage on the economy is done by hurricane/typhoon, storm surge, and severe thunderstorm.
